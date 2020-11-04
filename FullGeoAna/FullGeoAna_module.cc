@@ -423,6 +423,7 @@ void FullGeoAna::analyze(art::Event const & evt) {
   Event  = evt.event ();
 
   auto const* geo  = lar::providerFrom<geo::Geometry>();
+  auto const clockData = art::ServiceHandle<detinfo::DetectorClocksService const>()->DataFor(evt);
 
   /*
     |    _____                   _______         _   _      
@@ -563,12 +564,12 @@ void FullGeoAna::analyze(art::Event const & evt) {
             // modification
             const double start = ThisHit.PeakTime()-20;
             const double end   = ThisHit.PeakTime()+ThisHit.RMS()+20;
-            ThisHitIDE = bt_serv->ChannelToTrackIDEs(ThisHit.Channel(), start, end);
+            ThisHitIDE = bt_serv->ChannelToTrackIDEs(clockData, ThisHit.Channel(), start, end);
           }
           catch(...) {
             firstCatch++;
             try {
-              ThisSimIDE = bt_serv->HitToSimIDEs_Ps(ThisHit);
+              ThisSimIDE = bt_serv->HitToSimIDEs_Ps(clockData, ThisHit);
             }
             catch(...) {
               secondCatch++;
@@ -579,7 +580,7 @@ void FullGeoAna::analyze(art::Event const & evt) {
 
           // Get the simIDEs.
           try {
-            ThisSimIDE = bt_serv->HitToSimIDEs_Ps(ThisHit);
+            ThisSimIDE = bt_serv->HitToSimIDEs_Ps(clockData, ThisHit);
           }
           catch(...) {
             thirdCatch++;
