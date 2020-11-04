@@ -423,7 +423,6 @@ void FullGeoAna::analyze(art::Event const & evt) {
   Event  = evt.event ();
 
   auto const* geo  = lar::providerFrom<geo::Geometry>();
-  auto const clockData = art::ServiceHandle<detinfo::DetectorClocksService const>()->DataFor(evt);
 
   /*
     |    _____                   _______         _   _      
@@ -524,7 +523,7 @@ void FullGeoAna::analyze(art::Event const & evt) {
     art::Handle< std::vector<raw::RawDigit> > rawDigitsVecHandle;
     
     if (evt.getByLabel(fHitLabel     , reco_hits         ) &&
-  	evt.getByLabel(fRawDigitLabel, rawDigitsVecHandle)) {
+	evt.getByLabel(fRawDigitLabel, rawDigitsVecHandle)) {
 
       NTotHit = reco_hits->size();
       int LoopHits = NTotHit;
@@ -533,7 +532,7 @@ void FullGeoAna::analyze(art::Event const & evt) {
       for(int hit = 0; hit < LoopHits; ++hit) {
         recob::Hit const& ThisHit = reco_hits->at(hit);
         if (ThisHit.View() == geo::kU || ThisHit.View() == geo::kV) { ++NIndHit; } 
-  	else                                                        { ++NColHit; }
+	else                                                        { ++NColHit; }
       }
 
       // --- Fill the set of bad channels
@@ -544,7 +543,7 @@ void FullGeoAna::analyze(art::Event const & evt) {
         std::vector<geo::WireID> adjacentwire = geo->ChannelToWire(rawWireChannel);
 
         if (adjacentwire.size() < 1 || 
-  	    adjacentwire[0].Plane == geo::kU ||
+	    adjacentwire[0].Plane == geo::kU ||
             adjacentwire[0].Plane == geo::kV) { badChannels.insert(rawWireChannel); }
       }
       // std::cout << "Inserted "          << badChannels.size() 
@@ -564,12 +563,12 @@ void FullGeoAna::analyze(art::Event const & evt) {
             // modification
             const double start = ThisHit.PeakTime()-20;
             const double end   = ThisHit.PeakTime()+ThisHit.RMS()+20;
-            ThisHitIDE = bt_serv->ChannelToTrackIDEs(clockData, ThisHit.Channel(), start, end);
+            ThisHitIDE = bt_serv->ChannelToTrackIDEs(ThisHit.Channel(), start, end);
           }
           catch(...) {
             firstCatch++;
             try {
-              ThisSimIDE = bt_serv->HitToSimIDEs_Ps(clockData, ThisHit);
+              ThisSimIDE = bt_serv->HitToSimIDEs_Ps(ThisHit);
             }
             catch(...) {
               secondCatch++;
@@ -580,7 +579,7 @@ void FullGeoAna::analyze(art::Event const & evt) {
 
           // Get the simIDEs.
           try {
-            ThisSimIDE = bt_serv->HitToSimIDEs_Ps(clockData, ThisHit);
+            ThisSimIDE = bt_serv->HitToSimIDEs_Ps(ThisHit);
           }
           catch(...) {
             thirdCatch++;
@@ -592,7 +591,27 @@ void FullGeoAna::analyze(art::Event const & evt) {
           Hit_TPC .push_back(ThisHit.WireID().TPC);
           int channel = ThisHit.Channel();
           Hit_Chan.push_back(channel);
-  	}
+
+	  double wire_start[3] = {0,0,0};
+          double wire_end[3] = {0,0,0};
+          auto& wgeo = geo->WireIDToWireGeo(ThisHit.WireID());
+          wgeo.GetStart(wire_start);
+          wgeo.GetEnd(wire_end);
+          Hit_X_start.push_back(wire_start[0]);
+          Hit_Y_start.push_back(wire_start[1]);
+          Hit_Z_start.push_back(wire_start[2]);
+          Hit_X_end  .push_back(wire_end[0]);
+          Hit_Y_end  .push_back(wire_end[1]);
+          Hit_Z_end  .push_back(wire_end[2]);
+          Hit_Time   .push_back(ThisHit.PeakTime());
+          Hit_RMS    .push_back(ThisHit.RMS());
+          Hit_SADC   .push_back(ThisHit.SummedADC());
+          Hit_Int    .push_back(ThisHit.Integral());
+          Hit_Peak   .push_back(ThisHit.PeakAmplitude());
+          Hit_True_nIDEs.push_back(ThisHitIDE.size());
+
+
+	}
       }
     } // If getByLabel(...)
   } // If SaveTPC
