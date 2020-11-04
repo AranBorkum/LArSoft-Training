@@ -1,0 +1,137 @@
+#include "FullGeoAna.fcl"
+#include "trigprim.fcl"
+
+BEGIN_PROLOG
+
+trigprim_fullgeo: {
+  @table::standard_FullGeoAna
+}
+
+END_PROLOG
+
+#include "standard_detsim_dune10kt_1x2x6.fcl"
+
+process_name: PrimSim
+
+services: @local::dunefd_simulation_services
+services.TFileService:          { fileName: "FullGeoAna_plus_trigprim_multithreshold.root" }
+services.TimeTracker:           {}
+services.MemoryTracker:         { } # default is one
+services.RandomNumberGenerator: {} #ART native random number generator
+services.NuRandomService:       @local::per_event_NuRandomService  # seedservice.fcl
+services.message:               @local::dune_message_services_prod
+services.Geometry.GDML:         "dune10kt_v4_1x2x6.gdml"
+
+source: {
+  module_type: RootInput
+  maxEvents:  -1        # Number of events to create
+}
+
+physics: {
+   producers: {
+      simwire: {
+         module_type: "SimWireDUNE"
+         SimChannelLabel: "largeant"
+         NoiseOn: true
+         PedestalOn: true
+         DistortOn: false
+         SuppressOn: false
+         KeepEmptyChannels: true
+         AdcSimulator:      "adcsim_ideal"
+         UseRawDigitInput: true
+         RawDigitInputLabel: "daq"
+      }
+
+      trigprim800:  @local::trigprimpass1
+      trigprim1200: @local::trigprimpass1
+      trigprim1600: @local::trigprimpass1
+      trigprim2000: @local::trigprimpass1
+      trigprim2400: @local::trigprimpass1
+      trigprim2800: @local::trigprimpass1
+      trigprim3200: @local::trigprimpass1
+
+      rns:            { module_type: "RandomNumberSaver" }
+   }
+
+   analyzers: {
+     fullgeotrigprim800:  @local::trigprim_fullgeo
+     fullgeotrigprim1200: @local::trigprim_fullgeo
+     fullgeotrigprim1600: @local::trigprim_fullgeo
+     fullgeotrigprim2000: @local::trigprim_fullgeo
+     fullgeotrigprim2400: @local::trigprim_fullgeo
+     fullgeotrigprim2800: @local::trigprim_fullgeo
+     fullgeotrigprim3200: @local::trigprim_fullgeo
+     waveformstotree: {
+       module_type: "WaveformsToTree"
+       InputTag:    "simwire"
+       MaxChannels: 50
+     }
+   }
+
+   simulate: [ rns, simwire, trigprim800, 
+                             trigprim1200, 
+                             trigprim1600, 
+                             trigprim2000, 
+                             trigprim2400, 
+                             trigprim2800, 
+                             trigprim3200 ]
+				    
+   ana: [ fullgeotrigprim800,  
+	  fullgeotrigprim1200, 
+	  fullgeotrigprim1600, 
+	  fullgeotrigprim2000, 
+	  fullgeotrigprim2400, 
+	  fullgeotrigprim2800, 
+	  fullgeotrigprim3200 ]
+
+   trigger_paths: [ simulate ]
+   end_paths:     [ ana ]
+
+}
+
+physics.producers.trigprim800.finder.Threshold:   800
+physics.producers.trigprim1200.finder.Threshold: 1200
+physics.producers.trigprim1600.finder.Threshold: 1600
+physics.producers.trigprim2000.finder.Threshold: 2000
+physics.producers.trigprim2400.finder.Threshold: 2400
+physics.producers.trigprim2800.finder.Threshold: 2800
+physics.producers.trigprim3200.finder.Threshold: 3200
+
+physics.analyzers.fullgeotrigprim800.HitLabel:  "trigprim800"
+physics.analyzers.fullgeotrigprim1200.HitLabel: "trigprim1200"
+physics.analyzers.fullgeotrigprim1600.HitLabel: "trigprim1600"
+physics.analyzers.fullgeotrigprim2000.HitLabel: "trigprim2000"
+physics.analyzers.fullgeotrigprim2400.HitLabel: "trigprim2400"
+physics.analyzers.fullgeotrigprim2800.HitLabel: "trigprim2800"
+physics.analyzers.fullgeotrigprim3200.HitLabel: "trigprim3200"
+
+# =====================================================================
+# You probably won't need to change anything below here
+
+# Shut up the backtracker
+services.message.destinations.LogStandardOut.categories.BackTracker.limit: 0
+services.message.destinations.LogStandardError.categories.BackTracker.limit: 0
+
+# Display all the INFO message for SNAna_module
+services.message.destinations.LogStandardOut.categories.SNAna_module.limit:-1
+
+# If you want to have the mf::LogDebug() messages, uncomment the following:
+# services.message.destinations.LogStandardOut.threshold:"DEBUG"
+# services.message.destinations.LogStandardOut.categories.SNAna_module.limit:-1
+# services.message.destinations.LogStandardOut.categories.default.limit:0
+
+
+# DetSim services. These are used by SimWire to add noise and
+# pedestals to the incoming (noise-free) waveforms
+services.SimChannelExtractService: @local::scxgeneric
+services.ChannelNoiseService:      @local::chnoiseold
+services.PedestalAdditionService:  @local::padprovided
+services.AdcDistortService:        @local::stuckbits
+services.AdcSuppressService:       @local::zsnone
+services.AdcCompressService:       @local::cmpreplace
+services.DetPedestalService:       @local::dune_fixedpeds
+
+### What value do I want for the Noise Level?
+services.ChannelNoiseService.NoiseNormU:  5.75
+services.ChannelNoiseService.NoiseNormV:  5.75
+services.ChannelNoiseService.NoiseNormZ:  4.5
